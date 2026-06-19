@@ -9,15 +9,6 @@
     fromTo: () => {},
   };
 
-  /** Staggered deal animation on game start */
-  function dealCards(count) {
-    const cards = document.querySelectorAll('#my-hand .card');
-    gsap.from(cards, {
-      y: -200, x: 80, rotation: -30, opacity: 0, scale: .5,
-      duration: .5, stagger: .07, ease: 'back.out(1.4)',
-    });
-  }
-
   /** Card played — animate discard zone appearing */
   function playCard(cardEl) {
     if (!cardEl) return;
@@ -27,12 +18,13 @@
     });
   }
 
-  /** Draw card — new cards fly in from top-left (deck position) */
+  /** Draw card — new cards fly in from top-left (deck position).
+     Transform-only (no opacity fade) so a stalled tween can't hide drawn cards. */
   function drawCards(count, forced) {
     const cards = document.querySelectorAll('#my-hand .card');
     const newCards = Array.from(cards).slice(-count);
     gsap.from(newCards, {
-      x: -120, y: -80, rotation: 20, opacity: 0, scale: .6,
+      x: -120, y: -80, rotation: 20, scale: .6,
       duration: .4, stagger: .08, ease: 'back.out(1.2)',
     });
   }
@@ -155,7 +147,7 @@
   }
 
   window.Anim = {
-    dealCards, playCard, drawCards, shakeHand, unoAlert,
+    playCard, drawCards, shakeHand, unoAlert,
     spinDirection, pulseColorRing, showColorPicker,
     showPendingBadge, celebrate, showWinPanel, popTurnBanner, bumpOppCount,
   };

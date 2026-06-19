@@ -3,7 +3,10 @@
 #screen-lobby {
   align-items: center;
   justify-content: center;
-  background: radial-gradient(ellipse at 50% 0%, #1a2a4a 0%, var(--bg) 70%);
+  /* UNO card-design photo background; dark overlay keeps foreground readable. */
+  background:
+    linear-gradient(rgba(6,6,15,.74), rgba(6,6,15,.88)),
+    url('/img/uno-design-card.png') center / cover no-repeat;
 }
 
 .lobby-wrap {
@@ -69,7 +72,9 @@
 #screen-room {
   align-items: center;
   justify-content: center;
-  background: radial-gradient(ellipse at 50% 0%, #1a2a4a 0%, var(--bg) 70%);
+  background:
+    linear-gradient(rgba(6,6,15,.74), rgba(6,6,15,.88)),
+    url('/img/uno-design-card.png') center / cover no-repeat;
 }
 
 .room-wrap {
@@ -166,14 +171,55 @@
 
 .room-hint-text { color: var(--muted); font-size: .85rem; margin-top: 12px; }
 
+/* ── Host custom-rule toggle ─────────────────────────────── */
+.rule-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+.rule-text { display: flex; flex-direction: column; }
+.rule-title { font-size: .95rem; font-weight: 600; color: var(--text); }
+.rule-desc  { font-size: .75rem; color: var(--muted); }
+
+/* Toggle switch (checkbox-driven) */
+.switch { position: relative; flex: 0 0 auto; display: inline-flex; cursor: pointer; }
+.switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+.switch-track {
+  width: 44px;
+  height: 24px;
+  border-radius: 24px;
+  background: var(--border);
+  transition: background .2s;
+  display: inline-flex;
+  align-items: center;
+  padding: 2px;
+}
+.switch-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform .2s;
+}
+.switch input:checked + .switch-track { background: var(--accent); }
+.switch input:checked + .switch-track .switch-thumb { transform: translateX(20px); }
+.switch input:focus-visible + .switch-track { box-shadow: 0 0 0 3px rgba(88,166,255,.3); }
+
 /* ══ GAME BOARD ═════════════════════════════════════════════ */
 
 #screen-game {
   flex-direction: column;
   position: relative;
   overflow: hidden;
-  /* Deep midnight — premium card game atmosphere */
-  background: #06060f;
+  /* Desk/table photo as the play surface; light overlay keeps cards readable
+     while letting the desk show through. */
+  background:
+    linear-gradient(rgba(6,6,15,.35), rgba(6,6,15,.55)),
+    url('/images/uno-desk-bg.jpg') center / cover no-repeat;
 }
 
 /* Layer 1 — warm amber/gold ambient glow (UNO palette) */
@@ -240,6 +286,7 @@
   display: flex;
   flex-direction: column;
   height: 100vh;
+  height: 100dvh;       /* match visible viewport on mobile (keeps action row on screen) */
   width: 100%;
   overflow: hidden;
   padding: 8px;

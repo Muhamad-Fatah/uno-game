@@ -68,6 +68,7 @@ io.on('connection', (socket) => {
       playerList: rm.getPlayerList(room),
       yourSeatIndex: 0, isHost: true,
       gameType: room.gameType,
+      unoEnabled: room.rules.uno,
     });
   });
 
@@ -94,17 +95,18 @@ io.on('connection', (socket) => {
       code: room.code, roomUrl, qrDataUrl,
       playerList, yourSeatIndex: me.seatIndex, isHost: false,
       gameType: room.gameType,
+      unoEnabled: room.rules.uno,
     });
     socket.to(room.code).emit('room:playerJoined', { playerList });
   });
 
   // ── Game lifecycle ───────────────────────────────────────
 
-  socket.on('room:start', () => {
+  socket.on('room:start', (payload) => {
     const code = socket.roomCode;
     if (!code) return socket.emit('room:error', { message: 'Tidak ada room aktif' });
 
-    const result = rm.startGame(code, socket.id);
+    const result = rm.startGame(code, socket.id, payload?.rules);
     if (result.error) return socket.emit('room:error', { message: result.error });
 
     const { room } = result;
@@ -123,6 +125,7 @@ io.on('connection', (socket) => {
         pendingDraw: room.pendingDraw,
         pendingDrawType: room.pendingDrawType,
         gameType: room.gameType,
+        unoEnabled: room.rules.uno,
         playerList: room.players.map(p => ({
           id: p.id, name: p.name, seatIndex: p.seatIndex,
           cardCount: p.hand.length, connected: p.connected,
@@ -210,6 +213,29 @@ io.on('connection', (socket) => {
       lastAction: forced
         ? `${playerName} mengambil ${drawn.length} kartu (penalti)`
         : `${playerName} mengambil kartu`,
+    });
+  });
+
+  socket.on('game:turnTimeout', () => {
+    const code = socket.roomCode;
+    if (!code) return;
+
+    const result = rm.timeoutDraw(code, socket.id);
+    if (result.error) return; // turn already moved on / not their turn — ignore
+
+    const { room, drawn } = result;
+    const player = room.players.find(p => p.id === socket.id);
+
+    // Private hand update to the timed-out player
+    socket.emit('game:handUpdate', {
+      hand: player?.hand ?? [], drawn, forced: true, canPlay: false, canPlayCard: null,
+    });
+
+    const playerName = player?.name ?? '?';
+    const pub = rm.getPublicState(room);
+    io.to(room.code).emit('game:stateUpdate', {
+      ...pub,
+      lastAction: `⏱️ ${playerName} kehabisan waktu — ambil ${drawn.length} kartu & dilewati`,
     });
   });
 

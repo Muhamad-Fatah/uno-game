@@ -25,7 +25,9 @@ html, body {
 }
 
 /* ── Screen routing ──────────────────────────────────────── */
-.screen { display: none; width: 100%; height: 100vh; }
+/* dvh (dynamic viewport height) so mobile browser chrome doesn't push the
+   bottom action row out of view; 100vh kept as fallback for old browsers. */
+.screen { display: none; width: 100%; height: 100vh; height: 100dvh; }
 .screen.active { display: flex; }
 
 /* ── Buttons ─────────────────────────────────────────────── */

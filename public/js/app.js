@@ -32,6 +32,7 @@
     canPlayDrawn:       false,
     isMyTurn:           false,
     gameType:           'uno',
+    unoEnabled:         false,  // host-set rule: UNO call + challenge mechanic
     isFinished:         false,
     myRank:             null,
   };
@@ -97,6 +98,14 @@
     if (joinCode) {
       const codeInp = document.getElementById('inp-code');
       if (codeInp) { codeInp.value = joinCode.toUpperCase(); codeInp.disabled = true; }
+      // Arrived via QR/link → no "create" path. Just name + join the given room.
+      document.getElementById('btn-create')?.classList.add('hidden');
+      document.querySelector('.or-divider')?.classList.add('hidden');
+      codeInp?.classList.add('hidden');
+      const btnJoin = document.getElementById('btn-join');
+      if (btnJoin) btnJoin.style.flex = '1';
+      const sub = document.querySelector('.logo-sub');
+      if (sub) sub.textContent = `Bergabung ke room ${joinCode.toUpperCase()}`;
     }
 
     document.getElementById('btn-create').addEventListener('click', () => {
@@ -115,9 +124,11 @@
       socket.emit('room:join', { playerName: name, code });
     });
 
-    // Allow Enter key
+    // Allow Enter key — join the given room when arriving via QR, else create
     document.getElementById('inp-name').addEventListener('keydown', e => {
-      if (e.key === 'Enter') document.getElementById('btn-create').click();
+      if (e.key !== 'Enter') return;
+      if (joinCode) document.getElementById('btn-join').click();
+      else document.getElementById('btn-create').click();
     });
     document.getElementById('inp-code').addEventListener('keydown', e => {
       if (e.key === 'Enter') document.getElementById('btn-join').click();
@@ -134,6 +145,7 @@
     S.isHost        = data.isHost;
     S.playerList    = data.playerList;
     S.gameType      = data.gameType || 'uno';
+    S.unoEnabled    = !!data.unoEnabled;
 
     document.getElementById('room-code-disp').textContent = data.code;
 
@@ -153,12 +165,18 @@
       setTimeout(() => { document.getElementById('btn-copy').textContent = 'Salin Kode'; }, 1500);
     };
 
+    // Host-only custom rules toggle
+    const ruleRow = document.getElementById('uno-rule-row');
+    if (ruleRow) ruleRow.classList.toggle('hidden', !data.isHost);
+    const unoToggle = document.getElementById('uno-rule-toggle');
+    if (unoToggle) unoToggle.checked = !!data.unoEnabled;
+
     // Start button (host only)
     const btnStart = document.getElementById('btn-start');
     btnStart.style.display = data.isHost ? 'block' : 'none';
     btnStart.onclick = () => {
       setError('room-error', '');
-      socket.emit('room:start');
+      socket.emit('room:start', { rules: { uno: !!unoToggle?.checked } });
     };
   }
 
@@ -195,6 +213,7 @@
     S.pendingDraw        = data.pendingDraw || 0;
     S.pendingDrawType    = data.pendingDrawType || null;
     S.playerList         = data.playerList;
+    S.unoEnabled         = !!data.unoEnabled;
     S.drawnCardId        = null;
     S.canPlayDrawn       = false;
 
@@ -219,13 +238,16 @@
     spawnBgParticles();
 
     renderBoard();
-    Anim.dealCards(S.myHand.length);
+    // No deal animation: a stalled GSAP tween left first-turn cards stuck
+    // off-position so only 1 showed. Cards now render instantly & reliably.
     Anim.spinDirection(S.direction);
 
     // Wire up static buttons (use onclick so play-again doesn't stack listeners)
     document.getElementById('btn-draw').onclick   = onDrawClick;
     document.getElementById('btn-pass').onclick   = onPassClick;
-    document.getElementById('btn-uno').onclick    = onUnoClick;
+    const btnUno = document.getElementById('btn-uno');
+    btnUno.onclick = onUnoClick;
+    btnUno.style.display = S.unoEnabled ? '' : 'none'; // hidden when UNO rule is off
     document.getElementById('btn-again').onclick  = () => socket.emit('room:start');
     document.getElementById('btn-lobby').onclick  = () => location.reload();
     document.getElementById('draw-pile-card').onclick = onDrawClick;
@@ -369,11 +391,11 @@
         <div class="opp-name">${escHtml(p.name)}</div>
         <div class="opp-mini-cards">${miniFan.join('')}</div>
         <div class="opp-count">${p.cardCount} 🃏</div>
-        ${p.calledUno ? '<div class="opp-uno-badge">UNO</div>' : ''}
+        ${(S.unoEnabled && p.calledUno) ? '<div class="opp-uno-badge">UNO</div>' : ''}
       `;
 
-      // Challenge button
-      if (S.unoWindowOpen && S.unoVulnerableId === p.id) {
+      // Challenge button (only when the UNO rule is enabled)
+      if (S.unoEnabled && S.unoWindowOpen && S.unoVulnerableId === p.id) {
         const chalBtn = document.createElement('button');
         chalBtn.className = 'challenge-btn';
         chalBtn.textContent = 'TANGKAP!';
@@ -441,9 +463,10 @@
 
       if (turnTimeLeft <= 0) {
         clearTurnTimer();
-        // Auto-action when timer runs out
+        // Time's up: if they already drew a playable card, just skip; otherwise
+        // force-draw 1 (or the pending penalty) and skip — handled server-side.
         if (S.canPlayDrawn) onPassClick();
-        else onDrawClick();
+        else socket.emit('game:turnTimeout');
       }
     }, 1000);
   }
@@ -525,6 +548,7 @@
   }
 
   function onUnoClick() {
+    if (!S.unoEnabled) return;
     socket.emit('game:callUno');
   }
 
@@ -669,8 +693,8 @@
       // Only active during game screen
       if (!document.getElementById('screen-game')?.classList.contains('active')) return;
 
-      // Space → UNO button
-      if (e.code === 'Space' && !e.target.matches('input, button')) {
+      // Space → UNO button (only when the UNO rule is enabled)
+      if (e.code === 'Space' && S.unoEnabled && !e.target.matches('input, button')) {
         e.preventDefault();
         document.getElementById('btn-uno')?.click();
       }

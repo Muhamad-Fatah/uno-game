@@ -25,6 +25,7 @@ function makeRoom(code, hostId, firstPlayer, gameType) {
     players: [firstPlayer],
     state: 'waiting',
     gameType: gameType || 'uno',
+    rules: { uno: false }, // optional UNO call/challenge rule; host sets it at room:start
     deck: [],
     discardPile: [],
     currentPlayerIndex: 0,
@@ -60,12 +61,15 @@ function joinRoom(socket, code, playerName) {
   return { room };
 }
 
-function startGame(code, requesterId) {
+function startGame(code, requesterId, rules) {
   const room = rooms.get(code);
   if (!room) return { error: 'Room tidak ditemukan' };
   if (room.hostId !== requesterId) return { error: 'Hanya host yang bisa memulai' };
   if (room.players.length < 2) return { error: 'Minimal 2 pemain' };
   if (room.state === 'playing') return { error: 'Game sudah berjalan' };
+
+  // Lock in the host's rule choices for this game
+  room.rules = { uno: !!(rules && rules.uno) };
 
   room.deck = shuffle(buildDeck());
   room.discardPile = [];
@@ -173,8 +177,8 @@ function playCard(code, socketId, cardId, chosenColor) {
     return { room, card, skippedPlayerName, finishedPlayer: player, rank, gameOver: false };
   }
 
-  // UNO vulnerability
-  if (player.hand.length === 1) {
+  // UNO vulnerability — only when the UNO rule is enabled for this room
+  if (room.rules.uno && player.hand.length === 1) {
     room.unoWindowOpen = true;
     room.unoVulnerableId = player.id;
   }
@@ -263,9 +267,38 @@ function passAfterDraw(code, socketId) {
   return { room };
 }
 
+// Turn timer expired without action: draw the pending penalty (or 1 card) and
+// ALWAYS advance — unlike drawCard, the player never keeps the turn here.
+function timeoutDraw(code, socketId) {
+  const room = rooms.get(code);
+  if (!room) return { error: 'Room tidak ditemukan' };
+  if (room.state !== 'playing') return { error: 'Game belum dimulai' };
+
+  const pIdx = room.players.findIndex(p => p.id === socketId);
+  if (pIdx === -1) return { error: 'Pemain tidak ditemukan' };
+  if (pIdx !== room.currentPlayerIndex) return { error: 'Bukan giliranmu' };
+
+  const player = room.players[pIdx];
+
+  // Close UNO window on a turn action
+  room.unoWindowOpen = false;
+  room.unoVulnerableId = null;
+  for (const p of room.players) p.calledUno = false;
+
+  const count = room.pendingDraw > 0 ? room.pendingDraw : 1;
+  const drawn = drawCards(room, count);
+  player.hand.push(...drawn);
+  room.pendingDraw = 0;
+  room.pendingDrawType = null;
+
+  advanceTurn(room);
+  return { room, drawn };
+}
+
 function callUno(code, socketId) {
   const room = rooms.get(code);
   if (!room) return { error: 'Room tidak ditemukan' };
+  if (!room.rules.uno) return { error: 'Aturan UNO tidak aktif' };
   const player = room.players.find(p => p.id === socketId);
   if (!player) return { error: 'Pemain tidak ditemukan' };
   if (player.hand.length !== 1) return { error: 'UNO hanya bisa dipanggil saat punya 1 kartu' };
@@ -281,6 +314,7 @@ function callUno(code, socketId) {
 function challengeUno(code, challengerSocketId, targetSocketId) {
   const room = rooms.get(code);
   if (!room) return { error: 'Room tidak ditemukan' };
+  if (!room.rules.uno) return { error: 'Aturan UNO tidak aktif' };
   if (!room.unoWindowOpen) return { error: 'Tidak ada yang bisa di-challenge' };
   if (room.unoVulnerableId !== targetSocketId) return { error: 'Pemain yang dipilih tidak bisa di-challenge' };
 
@@ -339,6 +373,7 @@ function getPublicState(room) {
   return {
     code: room.code,
     gameType: room.gameType,
+    unoEnabled: room.rules.uno,
     topCard: room.discardPile[room.discardPile.length - 1] || null,
     currentColor: room.currentColor,
     currentPlayerIndex: room.currentPlayerIndex,
@@ -371,7 +406,7 @@ function cleanupOldRooms() {
 }
 
 module.exports = {
-  createRoom, joinRoom, startGame, playCard, drawCard, passAfterDraw,
+  createRoom, joinRoom, startGame, playCard, drawCard, passAfterDraw, timeoutDraw,
   callUno, challengeUno, removePlayer, getRoom,
   getPublicState, getPlayerList, cleanupOldRooms,
 };

@@ -51,6 +51,17 @@
           <p id="room-hint" class="room-hint-text">Menunggu pemain lain...</p>
         </div>
       </div>
+      <!-- Host-only custom rules (shown only to host via JS) -->
+      <div id="uno-rule-row" class="rule-row hidden">
+        <label class="switch">
+          <input type="checkbox" id="uno-rule-toggle">
+          <span class="switch-track"><span class="switch-thumb"></span></span>
+        </label>
+        <div class="rule-text">
+          <span class="rule-title">Aturan UNO</span>
+          <span class="rule-desc">Tombol UNO + tangkap pemain yang lupa</span>
+        </div>
+      </div>
       <button id="btn-start" class="btn btn-primary btn-lg" disabled>Mulai Game</button>
       <p id="room-error" class="error-msg"></p>
     </div>
