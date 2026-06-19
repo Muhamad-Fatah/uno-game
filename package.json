@@ -1,0 +1,14 @@
+{
+  "name": "uno-online",
+  "version": "1.0.0",
+  "description": "UNO multiplayer web game — 2-6 players, join via QR or room code",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "qrcode": "^1.5.3",
+    "socket.io": "^4.7.2"
+  }
+}

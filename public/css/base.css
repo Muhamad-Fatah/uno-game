@@ -1,0 +1,87 @@
+/* ── Reset & tokens ──────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --red:    #d63031;
+  --blue:   #0984e3;
+  --green:  #00b894;
+  --yellow: #fdcb6e;
+  --bg:     #0d1117;
+  --surface:#161b22;
+  --border: #30363d;
+  --text:   #e6edf3;
+  --muted:  #8b949e;
+  --accent: #58a6ff;
+  --radius: 12px;
+  --shadow: 0 8px 32px rgba(0,0,0,.5);
+}
+
+html, body {
+  height: 100%;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+}
+
+/* ── Screen routing ──────────────────────────────────────── */
+.screen { display: none; width: 100%; height: 100vh; }
+.screen.active { display: flex; }
+
+/* ── Buttons ─────────────────────────────────────────────── */
+.btn {
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: none;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform .15s, box-shadow .15s, opacity .15s;
+  outline: none;
+}
+.btn:active { transform: scale(.96); }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+
+.btn-primary  { background: var(--accent); color: #fff; }
+.btn-primary:not(:disabled):hover  { box-shadow: 0 0 0 3px rgba(88,166,255,.3); }
+
+.btn-secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+.btn-secondary:not(:disabled):hover { border-color: var(--accent); }
+
+.btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+.btn-ghost:not(:disabled):hover { color: var(--text); border-color: var(--text); }
+
+.btn-sm  { padding: 6px 12px; font-size: .85rem; }
+.btn-lg  { padding: 14px 40px; font-size: 1.1rem; width: 100%; }
+
+/* ── Inputs ──────────────────────────────────────────────── */
+input[type=text] {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 1rem;
+  padding: 10px 14px;
+  outline: none;
+  transition: border-color .2s;
+}
+input[type=text]:focus { border-color: var(--accent); }
+input[type=text]::placeholder { color: var(--muted); }
+
+/* ── Error message ───────────────────────────────────────── */
+.error-msg {
+  color: #ff7675;
+  font-size: .85rem;
+  min-height: 20px;
+  text-align: center;
+  margin-top: 8px;
+}
+
+/* ── Scrollbar ───────────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+/* ── Utility ─────────────────────────────────────────────── */
+.hidden { display: none !important; }

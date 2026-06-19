@@ -1,0 +1,175 @@
+/* ── UNO Card — Premium CSS ──────────────────────────────── */
+
+.card {
+  position: relative;
+  width: 72px;
+  height: 108px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 2.5px solid rgba(255,255,255,.22);
+  box-shadow:
+    0 6px 18px rgba(0,0,0,.65),
+    0 2px 4px rgba(0,0,0,.4),
+    inset 0 1px 0 rgba(255,255,255,.22);
+  user-select: none;
+  transition: transform .2s cubic-bezier(.34,1.56,.64,1), box-shadow .2s;
+  cursor: default;
+  overflow: hidden;
+}
+
+/* Diagonal white oval */
+.card::before {
+  content: '';
+  position: absolute;
+  background: rgba(255,255,255,.96);
+  border-radius: 50%;
+  width: 85%;
+  height: 58%;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%,-50%) rotate(-25deg);
+  box-shadow: 0 2px 8px rgba(0,0,0,.18);
+  z-index: 0;
+}
+
+/* Gloss shine overlay */
+.card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    145deg,
+    rgba(255,255,255,.25) 0%,
+    rgba(255,255,255,.08) 30%,
+    transparent 55%
+  );
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* ── Colors ──────────────────────────────────────────────── */
+.card-red    { background: linear-gradient(155deg, #ff5b5b 0%, #c0392b 100%); }
+.card-blue   { background: linear-gradient(155deg, #3ca0f0 0%, #1a5cb8 100%); }
+.card-green  { background: linear-gradient(155deg, #2ee88a 0%, #1a9c5a 100%); }
+.card-yellow { background: linear-gradient(155deg, #ffe046 0%, #e6a817 100%); }
+
+.card-wild {
+  background: conic-gradient(
+    #ff4757    0deg  90deg,
+    #2e86de   90deg 180deg,
+    #20bf6b  180deg 270deg,
+    #f9ca24  270deg 360deg
+  );
+}
+
+/* Card back — premium navy with subtle crosshatch */
+.card-back {
+  background:
+    repeating-linear-gradient(
+       45deg,
+       rgba(255,255,255,.03)  0px, rgba(255,255,255,.03)  1px,
+       transparent             1px, transparent             7px
+    ),
+    repeating-linear-gradient(
+      -45deg,
+       rgba(255,255,255,.02)  0px, rgba(255,255,255,.02)  1px,
+       transparent             1px, transparent             7px
+    ),
+    radial-gradient(ellipse at 40% 35%, #1e2e6e, #0d0d1f);
+  border: 2.5px solid #c0392b;
+  box-shadow:
+    0 6px 18px rgba(0,0,0,.7),
+    inset 0 1px 0 rgba(255,255,255,.1);
+}
+.card-back::before { display: none; }
+.card-back::after  { display: none; }
+
+/* ── Card value text ─────────────────────────────────────── */
+.card-face {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.card-center {
+  font-size: 1.6rem;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.5px;
+}
+
+.card-red    .card-center { color: #a62019; text-shadow: 0 1px 2px rgba(255,255,255,.15); }
+.card-blue   .card-center { color: #14408a; text-shadow: 0 1px 2px rgba(255,255,255,.15); }
+.card-green  .card-center { color: #0f6634; text-shadow: 0 1px 2px rgba(255,255,255,.15); }
+.card-yellow .card-center { color: #7a5300; text-shadow: 0 1px 2px rgba(255,255,255,.15); }
+.card-wild   .card-center { color: #fff; font-size: 1.3rem; text-shadow: 0 2px 8px rgba(0,0,0,.8); }
+
+.card-corner {
+  position: absolute;
+  font-size: .62rem;
+  font-weight: 900;
+  line-height: 1;
+  z-index: 2;
+}
+.card-corner.tl { top: 5px;  left:  6px; color: rgba(255,255,255,.9); text-shadow: 0 1px 2px rgba(0,0,0,.5); }
+.card-corner.br { bottom: 5px; right: 6px; transform: rotate(180deg); color: rgba(255,255,255,.9); text-shadow: 0 1px 2px rgba(0,0,0,.5); }
+
+/* ── Playable / not-playable ─────────────────────────────── */
+.card.playable { cursor: pointer; }
+.card.playable:hover {
+  transform: translateY(-20px) scale(1.08);
+  box-shadow:
+    0 20px 36px rgba(0,0,0,.7),
+    0 0 0 2px rgba(255,255,255,.6),
+    0 0 18px rgba(255,255,255,.2);
+  z-index: 10;
+}
+.card.drawn-highlight {
+  box-shadow: 0 0 0 3px #fdcb6e, 0 8px 24px rgba(0,0,0,.6);
+  transform: translateY(-14px);
+}
+.card.not-playable {
+  opacity: .38;
+  filter: saturate(.3) brightness(.85);
+  cursor: not-allowed;
+}
+
+/* ── Back logo ───────────────────────────────────────────── */
+.uno-logo-sm {
+  position: relative;
+  z-index: 2;
+  font-size: 1rem;
+  font-weight: 900;
+  font-style: italic;
+  color: #e74c3c;
+  letter-spacing: 1px;
+  text-shadow: 0 0 10px rgba(231,76,60,.7), 0 2px 4px rgba(0,0,0,.5);
+}
+
+/* ── Opponent small cards ────────────────────────────────── */
+.card-mini {
+  width: 34px;
+  height: 52px;
+  border-radius: 6px;
+  border-width: 2px;
+}
+.card-mini::before { display: none; }
+.card-mini::after  { display: none; }
+.card-mini .uno-logo-sm { font-size: .52rem; }
+
+/* ── Discard pile card ───────────────────────────────────── */
+.pile-card {
+  width: 82px;
+  height: 122px;
+  border-radius: 14px;
+}
+.pile-card .card-center { font-size: 1.9rem; }
