@@ -89,23 +89,6 @@
     while (log.children.length > 8) log.removeChild(log.lastChild);
   }
 
-  // ── Screen: Game select ────────────────────────────────────
-  function initSelectScreen() {
-    // If joining via ?join=CODE, skip game selection and go straight to lobby
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('join')) {
-      showScreen('lobby');
-      return;
-    }
-
-    document.querySelectorAll('.game-card').forEach(card => {
-      card.addEventListener('click', () => {
-        selectedGame = card.dataset.game || 'uno';
-        showScreen('lobby');
-      });
-    });
-  }
-
   // ── Screen: Lobby ──────────────────────────────────────────
   function initLobby() {
     // Pre-fill join code from URL ?join=XXXX
@@ -612,12 +595,7 @@
 
   socket.on('game:started', (data) => {
     S.gameType = data.gameType || 'uno';
-    if (S.gameType === 'snakes') {
-      window.SnakesLadders.init(data, socket);
-      showScreen('snakegame');
-    } else {
-      startGame(data);
-    }
+    startGame(data);
   });
 
   socket.on('game:stateUpdate', (data) => {
@@ -665,16 +643,8 @@
     }
   });
 
-  socket.on('game:snakesMoved', (data) => {
-    window.SnakesLadders?.onSnakesMoved(data);
-  });
-
   socket.on('game:won', ({ winnerName, finalScores, finishedPlayers }) => {
-    if (S.gameType === 'snakes') {
-      window.SnakesLadders?.onWin(winnerName);
-    } else {
-      showWin(winnerName, finalScores, finishedPlayers);
-    }
+    showWin(winnerName, finalScores, finishedPlayers);
   });
 
   socket.on('game:error', ({ message }) => {
@@ -692,7 +662,6 @@
   }
 
   document.addEventListener('DOMContentLoaded', () => {
-    initSelectScreen();
     initLobby();
 
     // ── Keyboard shortcuts ────────────────────────────────────

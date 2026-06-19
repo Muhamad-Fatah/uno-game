@@ -11,12 +11,31 @@ const rm = require('./game/roomManager');
 const PORT = parseInt(process.env.PORT || '3000', 10);
 
 function getLanIp() {
-  for (const ifaces of Object.values(networkInterfaces())) {
+  // Why: naive "first non-internal IPv4" picks WSL/Hyper-V/VM virtual adapters
+  // (e.g. 172.26.x.x) which phones on the real Wi-Fi can't reach. Skip virtual
+  // adapters by name, then rank candidates by how "real-LAN" the subnet is.
+  const VIRTUAL = /(wsl|hyper-v|vethernet|virtualbox|vmware|loopback|docker)/i;
+
+  // Lower score = more preferred. 192.168.x is the usual home Wi-Fi range.
+  const score = (ip) => {
+    if (ip.startsWith('192.168.')) return 0;
+    if (ip.startsWith('10.')) return 1;
+    // 172.16–31.x is legit private space but also where WSL/Docker live — last.
+    if (/^172\.(1[6-9]|2[0-9]|3[01])\./.test(ip)) return 2;
+    return 3;
+  };
+
+  const candidates = [];
+  for (const [name, ifaces] of Object.entries(networkInterfaces())) {
+    if (VIRTUAL.test(name)) continue;
     for (const addr of ifaces) {
-      if (addr.family === 'IPv4' && !addr.internal) return addr.address;
+      if (addr.family === 'IPv4' && !addr.internal) candidates.push(addr.address);
     }
   }
-  return 'localhost';
+
+  if (candidates.length === 0) return 'localhost';
+  candidates.sort((a, b) => score(a) - score(b));
+  return candidates[0];
 }
 
 const LAN_IP = process.env.BIND_IP || getLanIp();
@@ -104,7 +123,6 @@ io.on('connection', (socket) => {
         pendingDraw: room.pendingDraw,
         pendingDrawType: room.pendingDrawType,
         gameType: room.gameType,
-        snakesPositions: room.snakesPositions,
         playerList: room.players.map(p => ({
           id: p.id, name: p.name, seatIndex: p.seatIndex,
           cardCount: p.hand.length, connected: p.connected,
@@ -192,34 +210,6 @@ io.on('connection', (socket) => {
       lastAction: forced
         ? `${playerName} mengambil ${drawn.length} kartu (penalti)`
         : `${playerName} mengambil kartu`,
-    });
-  });
-
-  socket.on('game:rollDice', () => {
-    const code = socket.roomCode;
-    if (!code) return;
-
-    const result = rm.rollDiceSnakes(code, socket.id);
-    if (result.error) return socket.emit('game:error', { message: result.error });
-
-    const { room, diceValue, oldPos, newPos, rawNew, event, overshot, won, player } = result;
-
-    if (won) {
-      io.to(room.code).emit('game:snakesMoved', {
-        playerId: player.id, playerName: player.name,
-        diceValue, oldPos, newPos, rawNew, event, overshot, won: true,
-        currentPlayerIndex: room.currentPlayerIndex,
-        snakesPositions: room.snakesPositions,
-      });
-      io.to(room.code).emit('game:won', { winnerName: player.name, finalScores: { [player.name]: 0 } });
-      return;
-    }
-
-    io.to(room.code).emit('game:snakesMoved', {
-      playerId: player.id, playerName: player.name,
-      diceValue, oldPos, newPos, rawNew, event, overshot, won: false,
-      currentPlayerIndex: room.currentPlayerIndex,
-      snakesPositions: room.snakesPositions,
     });
   });
 

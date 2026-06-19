@@ -9,7 +9,9 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  border: 2.5px solid rgba(255,255,255,.22);
+  /* Thick solid-white frame — matches the reference card outline.
+     Why solid #fff (not translucent): reference cards have a real white margin. */
+  border: 4px solid #fff;
   box-shadow:
     0 6px 18px rgba(0,0,0,.65),
     0 2px 4px rgba(0,0,0,.4),
@@ -20,17 +22,19 @@
   overflow: hidden;
 }
 
-/* Diagonal white oval */
+/* Diagonal white oval — classic UNO ellipse, tilted ~45° like the reference.
+   Tall+narrow (height > width) so the 45° rotation runs corner-to-corner; the
+   card's overflow:hidden clips it into the signature lozenge shape. */
 .card::before {
   content: '';
   position: absolute;
   background: rgba(255,255,255,.96);
   border-radius: 50%;
-  width: 85%;
-  height: 58%;
+  width: 60%;
+  height: 122%;
   top: 50%;
   left: 50%;
-  transform: translate(-50%,-50%) rotate(-25deg);
+  transform: translate(-50%,-50%) rotate(45deg);
   box-shadow: 0 2px 8px rgba(0,0,0,.18);
   z-index: 0;
 }

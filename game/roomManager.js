@@ -2,7 +2,6 @@
 
 const { buildDeck, shuffle, drawCards } = require('./deck');
 const { isPlayable, calculateScore } = require('./rules');
-const { processMove } = require('./snakesLadders');
 
 const rooms = new Map();
 
@@ -28,7 +27,6 @@ function makeRoom(code, hostId, firstPlayer, gameType) {
     gameType: gameType || 'uno',
     deck: [],
     discardPile: [],
-    snakesPositions: null,
     currentPlayerIndex: 0,
     direction: 1,
     pendingDraw: 0,
@@ -68,19 +66,6 @@ function startGame(code, requesterId) {
   if (room.hostId !== requesterId) return { error: 'Hanya host yang bisa memulai' };
   if (room.players.length < 2) return { error: 'Minimal 2 pemain' };
   if (room.state === 'playing') return { error: 'Game sudah berjalan' };
-
-  // Snakes & Ladders: no deck, just positions
-  if (room.gameType === 'snakes') {
-    room.state = 'playing';
-    room.snakesPositions = {};
-    for (const p of room.players) {
-      room.snakesPositions[p.id] = 1;
-      p.hand = [];
-      p.calledUno = false;
-    }
-    room.currentPlayerIndex = 0;
-    return { room };
-  }
 
   room.deck = shuffle(buildDeck());
   room.discardPile = [];
@@ -278,32 +263,6 @@ function passAfterDraw(code, socketId) {
   return { room };
 }
 
-function rollDiceSnakes(code, socketId) {
-  const room = rooms.get(code);
-  if (!room) return { error: 'Room tidak ditemukan' };
-  if (room.state !== 'playing') return { error: 'Game belum dimulai' };
-  if (room.gameType !== 'snakes') return { error: 'Bukan game ular tangga' };
-
-  const pIdx = room.players.findIndex(p => p.id === socketId);
-  if (pIdx === -1) return { error: 'Pemain tidak ditemukan' };
-  if (pIdx !== room.currentPlayerIndex) return { error: 'Bukan giliranmu' };
-
-  const player     = room.players[pIdx];
-  const currentPos = room.snakesPositions[socketId] || 1;
-  const dice       = Math.floor(Math.random() * 6) + 1;
-
-  const { diceValue, oldPos, newPos, rawNew, event, overshot, won } = processMove(currentPos, dice);
-  room.snakesPositions[socketId] = newPos;
-
-  if (won) {
-    room.state = 'finished';
-    return { room, diceValue, oldPos, newPos, rawNew, event, overshot, won: true, player };
-  }
-
-  advanceTurn(room);
-  return { room, diceValue, oldPos, newPos, rawNew, event, overshot, won: false, player };
-}
-
 function callUno(code, socketId) {
   const room = rooms.get(code);
   if (!room) return { error: 'Room tidak ditemukan' };
@@ -389,7 +348,6 @@ function getPublicState(room) {
     unoWindowOpen: room.unoWindowOpen,
     unoVulnerableId: room.unoVulnerableId,
     deckCount: room.deck.length,
-    snakesPositions: room.snakesPositions,
     finishedPlayers: room.finishedPlayers || [],
     playerCardCounts: room.players.map(p => ({
       id: p.id, name: p.name, seatIndex: p.seatIndex,
@@ -413,7 +371,7 @@ function cleanupOldRooms() {
 }
 
 module.exports = {
-  createRoom, joinRoom, startGame, playCard, drawCard, passAfterDraw, rollDiceSnakes,
+  createRoom, joinRoom, startGame, playCard, drawCard, passAfterDraw,
   callUno, challengeUno, removePlayer, getRoom,
   getPublicState, getPlayerList, cleanupOldRooms,
 };
