@@ -159,6 +159,7 @@
   font-size: .95rem;
 }
 #player-list-ul .player-icon { font-size: 1.1rem; }
+#player-list-ul .player-seat { color: var(--muted); font-weight: 700; min-width: 18px; }
 #player-list-ul .host-badge {
   margin-left: auto;
   background: rgba(88,166,255,.15);
@@ -571,6 +572,13 @@
   50% { transform: scale(1.04); }
 }
 
+.my-card-count {
+  font-size: .85rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-align: center;
+}
+
 .my-hand {
   display: flex;
   align-items: flex-end;
@@ -666,6 +674,75 @@
 .color-btn[data-color=blue]   { background: #3498db; }
 .color-btn[data-color=green]  { background: #2ecc71; }
 .color-btn[data-color=yellow] { background: #f1c40f; }
+
+/* Card legend / help */
+.btn-help {
+  position: fixed;
+  top: 8px;
+  right: 8px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 1.05rem;
+  font-weight: 800;
+  cursor: pointer;
+  z-index: 90;
+  box-shadow: var(--shadow);
+  transition: transform .2s, background .2s;
+}
+.btn-help:hover { transform: scale(1.1); }
+
+.help-panel {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 250;
+  backdrop-filter: blur(4px);
+}
+.help-panel-inner {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px 26px;
+  box-shadow: var(--shadow);
+  max-width: 420px;
+  width: 90%;
+}
+.help-panel-inner h3 { margin-bottom: 16px; font-size: 1.1rem; text-align: center; }
+.help-list { list-style: none; margin: 0 0 20px; padding: 0; }
+.help-list li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: .9rem;
+}
+.help-list li:last-child { border-bottom: none; }
+.help-sym {
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 1.1rem;
+  color: #fff;
+}
+.help-sym.sym-skip    { background: #e74c3c; }
+.help-sym.sym-reverse { background: #3498db; }
+.help-sym.sym-draw2   { background: #2ecc71; color: #1a1a1a; }
+.help-sym.sym-wild    { background: linear-gradient(135deg,#e74c3c,#f1c40f,#2ecc71,#3498db); }
+.help-sym.sym-wild4   { background: linear-gradient(135deg,#e74c3c,#f1c40f,#2ecc71,#3498db); }
+.help-panel-inner .btn-ghost { display: block; width: 100%; }
 
 /* UNO alert */
 .uno-overlay {
@@ -858,6 +935,8 @@
   .opp-name  { font-size: .62rem; max-width: 68px; }
   .opp-count { font-size: .9rem; }
   .opp-mini-cards { gap: 1px; }
+  /* Mobile: one card per opponent + the count below (no 7-card fan) */
+  .opp-mini-cards .card-mini:not(:first-child) { display: none; }
 
   /* Center: denser — hide side panels, keep piles + direction row */
   .game-center {
@@ -885,6 +964,7 @@
   .pile-card .card-center { font-size: 1.5rem; }
 
   /* Hand */
+  .my-card-count { font-size: .75rem; }
   .my-hand { padding: 6px 10px 2px; gap: 0; }
   .my-hand .card { margin-left: -20px; }
   .my-hand .card:first-child { margin-left: 0; }
@@ -912,4 +992,10 @@
 
   /* Finished banner moves up */
   .finished-banner { bottom: 80px; }
+
+  /* Help panel: tighter, smaller button */
+  .btn-help { width: 28px; height: 28px; font-size: .9rem; top: 6px; right: 6px; }
+  .help-panel-inner { padding: 18px 18px; }
+  .help-list li { font-size: .82rem; gap: 9px; padding: 7px 0; }
+  .help-sym { width: 32px; height: 32px; font-size: .95rem; }
 }

@@ -35,6 +35,7 @@
     unoEnabled:         false,  // host-set rule: UNO call + challenge mechanic
     isFinished:         false,
     myRank:             null,
+    isSpectator:        false,  // host-set rule: host watches without playing
   };
 
   // ── Socket ─────────────────────────────────────────────────
@@ -171,12 +172,25 @@
     const unoToggle = document.getElementById('uno-rule-toggle');
     if (unoToggle) unoToggle.checked = !!data.unoEnabled;
 
+    // Host-only spectator toggle
+    const specRow = document.getElementById('spectator-rule-row');
+    if (specRow) specRow.classList.toggle('hidden', !data.isHost);
+    const specToggle = document.getElementById('spectator-rule-toggle');
+    if (specToggle) specToggle.checked = !!data.spectatorEnabled;
+
+    // Host-only shuffle-seats button
+    const btnShuffle = document.getElementById('btn-shuffle');
+    if (btnShuffle) {
+      btnShuffle.classList.toggle('hidden', !data.isHost);
+      btnShuffle.onclick = () => socket.emit('room:shuffleSeats');
+    }
+
     // Start button (host only)
     const btnStart = document.getElementById('btn-start');
     btnStart.style.display = data.isHost ? 'block' : 'none';
     btnStart.onclick = () => {
       setError('room-error', '');
-      socket.emit('room:start', { rules: { uno: !!unoToggle?.checked } });
+      socket.emit('room:start', { rules: { uno: !!unoToggle?.checked, hostSpectator: !!specToggle?.checked } });
     };
   }
 
@@ -185,9 +199,10 @@
     const ul = document.getElementById('player-list-ul');
     if (!ul) return;
     ul.innerHTML = '';
-    list.forEach(p => {
+    list.forEach((p, i) => {
       const li = document.createElement('li');
       li.innerHTML = `
+        <span class="player-seat">${i + 1}.</span>
         <span class="player-icon">${p.isHost ? '👑' : '🎮'}</span>
         <span>${escHtml(p.name)}</span>
         ${p.isHost ? '<span class="host-badge">HOST</span>' : ''}
@@ -214,10 +229,18 @@
     S.pendingDrawType    = data.pendingDrawType || null;
     S.playerList         = data.playerList;
     S.unoEnabled         = !!data.unoEnabled;
+    S.isSpectator        = !!data.spectator;
     S.drawnCardId        = null;
     S.canPlayDrawn       = false;
 
     showScreen('game');
+
+    // Spectator: hide own play area, show watching banner. Non-spectator: ensure
+    // they're shown (matters when "Main Lagi" toggles a host back to playing).
+    const myZone   = document.querySelector('.my-zone');
+    const specBan  = document.getElementById('spectator-banner');
+    if (myZone)  myZone.classList.toggle('hidden', S.isSpectator);
+    if (specBan) specBan.classList.toggle('hidden', !S.isSpectator);
 
     // Reset overlays for play-again scenario
     document.getElementById('win-screen')?.classList.add('hidden');
@@ -251,6 +274,12 @@
     document.getElementById('btn-again').onclick  = () => socket.emit('room:start');
     document.getElementById('btn-lobby').onclick  = () => location.reload();
     document.getElementById('draw-pile-card').onclick = onDrawClick;
+
+    // Card legend / help panel (onclick so play-again doesn't stack listeners)
+    const helpPanel = document.getElementById('help-panel');
+    document.getElementById('btn-help').onclick = () => helpPanel?.classList.remove('hidden');
+    document.getElementById('btn-help-close').onclick = () => helpPanel?.classList.add('hidden');
+    helpPanel.onclick = (e) => { if (e.target === helpPanel) helpPanel.classList.add('hidden'); };
 
     document.querySelectorAll('.color-btn').forEach(btn => {
       btn.addEventListener('click', () => onColorPick(btn.dataset.color));
@@ -425,6 +454,9 @@
     });
 
     hand.scrollLeft = prevScroll;
+
+    const countEl = document.getElementById('my-card-count');
+    if (countEl) countEl.textContent = `Kartu kamu: ${S.myHand.length}`;
   }
 
   // ── Turn timer ─────────────────────────────────────────────
@@ -608,6 +640,12 @@
 
   socket.on('room:playerJoined', ({ playerList }) => renderPlayerList(playerList));
   socket.on('room:playerLeft',   ({ playerList }) => renderPlayerList(playerList));
+  socket.on('room:seatsShuffled', ({ playerList }) => {
+    // Seats reordered — our own seatIndex may have moved, so re-derive it by id
+    const me = playerList.find(p => p.id === S.myId);
+    if (me) S.mySeatIndex = me.seatIndex;
+    renderPlayerList(playerList);
+  });
 
   socket.on('room:error', ({ message }) => {
     // Show error in whichever screen is active

@@ -62,6 +62,18 @@
           <span class="rule-desc">Tombol UNO + tangkap pemain yang lupa</span>
         </div>
       </div>
+      <!-- Host-only: host sits out and watches -->
+      <div id="spectator-rule-row" class="rule-row hidden">
+        <label class="switch">
+          <input type="checkbox" id="spectator-rule-toggle">
+          <span class="switch-track"><span class="switch-thumb"></span></span>
+        </label>
+        <div class="rule-text">
+          <span class="rule-title">Jadi Penonton</span>
+          <span class="rule-desc">Host menonton tanpa ikut bermain</span>
+        </div>
+      </div>
+      <button id="btn-shuffle" class="btn btn-secondary btn-sm hidden">🎲 Acak Tempat Duduk</button>
       <button id="btn-start" class="btn btn-primary btn-lg" disabled>Mulai Game</button>
       <p id="room-error" class="error-msg"></p>
     </div>
@@ -119,6 +131,7 @@
           <div id="turn-timer-fill" class="turn-timer-fill"></div>
           <span id="turn-timer-count" class="turn-timer-count">15</span>
         </div>
+        <div class="my-card-count" id="my-card-count"></div>
         <div class="my-hand" id="my-hand">
           <!-- cards rendered here -->
         </div>
@@ -127,6 +140,25 @@
           <button id="btn-draw" class="btn btn-draw">Ambil Kartu</button>
           <button id="btn-pass" class="btn btn-pass hidden">Lewati</button>
         </div>
+      </div>
+    </div>
+
+    <!-- ── Spectator banner ── -->
+    <div id="spectator-banner" class="finished-banner hidden">👁 Mode Penonton — kamu sedang menonton</div>
+
+    <!-- ── Card legend / help ── -->
+    <button id="btn-help" class="btn-help" title="Keterangan kartu">?</button>
+    <div id="help-panel" class="help-panel hidden">
+      <div class="help-panel-inner">
+        <h3>Keterangan Kartu</h3>
+        <ul class="help-list">
+          <li><span class="help-sym sym-skip">⊘</span><span><strong>Skip</strong> — lewati giliran pemain berikutnya</span></li>
+          <li><span class="help-sym sym-reverse">↺</span><span><strong>Reverse</strong> — balik arah permainan</span></li>
+          <li><span class="help-sym sym-draw2">+2</span><span><strong>Draw Two</strong> — pemain berikut ambil 2 kartu &amp; dilewati</span></li>
+          <li><span class="help-sym sym-wild">★</span><span><strong>Wild</strong> — pilih warna bebas</span></li>
+          <li><span class="help-sym sym-wild4">+4</span><span><strong>Wild Draw Four</strong> — pilih warna + pemain berikut ambil 4 kartu</span></li>
+        </ul>
+        <button id="btn-help-close" class="btn btn-ghost">Tutup</button>
       </div>
     </div>
 

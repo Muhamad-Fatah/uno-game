@@ -15,7 +15,7 @@ function generateCode() {
 }
 
 function makePlayer(id, name, seatIndex) {
-  return { id, name, hand: [], seatIndex, connected: true, calledUno: false, finished: false };
+  return { id, name, hand: [], seatIndex, connected: true, calledUno: false, finished: false, spectator: false };
 }
 
 function makeRoom(code, hostId, firstPlayer, gameType) {
@@ -25,7 +25,7 @@ function makeRoom(code, hostId, firstPlayer, gameType) {
     players: [firstPlayer],
     state: 'waiting',
     gameType: gameType || 'uno',
-    rules: { uno: false }, // optional UNO call/challenge rule; host sets it at room:start
+    rules: { uno: false, hostSpectator: false }, // host sets these at room:start (UNO rule; host-as-spectator)
     deck: [],
     discardPile: [],
     currentPlayerIndex: 0,
@@ -65,11 +65,21 @@ function startGame(code, requesterId, rules) {
   const room = rooms.get(code);
   if (!room) return { error: 'Room tidak ditemukan' };
   if (room.hostId !== requesterId) return { error: 'Hanya host yang bisa memulai' };
-  if (room.players.length < 2) return { error: 'Minimal 2 pemain' };
   if (room.state === 'playing') return { error: 'Game sudah berjalan' };
 
-  // Lock in the host's rule choices for this game
-  room.rules = { uno: !!(rules && rules.uno) };
+  // Lock in the host's rule choices for this game.
+  // Reuse existing rules when no payload (replay "Main Lagi" sends none) so the
+  // host's spectator/UNO choices persist across rounds instead of resetting.
+  room.rules = {
+    uno:           rules ? !!rules.uno           : (room.rules.uno || false),
+    hostSpectator: rules ? !!rules.hostSpectator : (room.rules.hostSpectator || false),
+  };
+  // Only the host can be a spectator; mark before dealing/turn setup.
+  for (const p of room.players) p.spectator = (p.id === room.hostId) && room.rules.hostSpectator;
+
+  // Need at least 2 active (non-spectator) players to start
+  const activeCount = room.players.filter(p => p.connected && !p.spectator).length;
+  if (activeCount < 2) return { error: 'Minimal 2 pemain (selain penonton)' };
 
   room.deck = shuffle(buildDeck());
   room.discardPile = [];
@@ -79,11 +89,12 @@ function startGame(code, requesterId, rules) {
   room.pendingDrawType = null;
   room.unoWindowOpen = false;
   room.unoVulnerableId = null;
-  room.currentPlayerIndex = 0;
+  // Start on the first active player (a host-spectator at seat 0 must not start)
+  room.currentPlayerIndex = room.players.findIndex(p => !p.spectator && p.connected);
 
   room.finishedPlayers = [];
   for (const p of room.players) {
-    p.hand = drawCards(room, 7);
+    p.hand = p.spectator ? [] : drawCards(room, 7); // spectators get no cards
     p.calledUno = false;
     p.finished  = false;
   }
@@ -105,8 +116,14 @@ function startGame(code, requesterId, rules) {
   if (startCard.value === 'skip') {
     advanceTurn(room); // first player is skipped
   } else if (startCard.value === 'reverse') {
-    if (room.players.length === 2) advanceTurn(room);
-    else { room.direction = -1; room.currentPlayerIndex = room.players.length - 1; }
+    if (activeCount === 2) advanceTurn(room);
+    else {
+      room.direction = -1;
+      // Last active player starts (skip spectators/disconnected from the end)
+      for (let i = room.players.length - 1; i >= 0; i--) {
+        if (!room.players[i].spectator && room.players[i].connected) { room.currentPlayerIndex = i; break; }
+      }
+    }
   } else if (startCard.value === 'draw2') {
     room.pendingDraw = 2;
     room.pendingDrawType = 'draw2';
@@ -158,7 +175,7 @@ function playCard(code, socketId, cardId, chosenColor) {
     const rank = room.finishedPlayers.length + 1;
     room.finishedPlayers.push({ id: player.id, name: player.name, rank });
 
-    const unfinished = room.players.filter(p => p.connected && !p.finished);
+    const unfinished = room.players.filter(p => p.connected && !p.finished && !p.spectator);
 
     if (unfinished.length <= 1) {
       // Game over — award last place to the lone survivor
@@ -169,12 +186,17 @@ function playCard(code, socketId, cardId, chosenColor) {
       }
       room.state = 'finished';
       const firstWinner = room.players.find(p => p.id === room.finishedPlayers[0].id) || player;
-      return { room, winner: player, scores: calculateScore(room.players, firstWinner), finishedPlayer: player, rank, gameOver: true };
+      // winner = rank-1 (firstWinner), NOT `player` — `player` is the last finisher
+      // that triggers game-over, which in 3+ player games is not the #1 winner.
+      return { room, winner: firstWinner, scores: calculateScore(room.players.filter(p => !p.spectator), firstWinner), finishedPlayer: player, rank, gameOver: true };
     }
 
-    // Game continues — skip past this player
+    // Game continues — skip past this player.
+    // skippedPlayerName is null here: the card-effects block below is never
+    // reached on finish, so no skip is computed. (Referencing the `let` from
+    // that block would throw a TDZ error — it's declared after this branch.)
     advanceTurn(room);
-    return { room, card, skippedPlayerName, finishedPlayer: player, rank, gameOver: false };
+    return { room, card, skippedPlayerName: null, finishedPlayer: player, rank, gameOver: false };
   }
 
   // UNO vulnerability — only when the UNO rule is enabled for this room
@@ -195,7 +217,7 @@ function playCard(code, socketId, cardId, chosenColor) {
     skippedPlayerName = room.players[nextIdx]?.name ?? null;
   } else if (card.value === 'reverse') {
     room.direction *= -1;
-    if (room.players.filter(p => p.connected).length === 2) {
+    if (room.players.filter(p => p.connected && !p.spectator).length === 2) {
       extraSkip = true;
       // After direction flip, advance lands on the "other" player — they get skipped
       const nextIdx = (pIdx + room.direction + n) % n;
@@ -358,11 +380,21 @@ function advanceTurn(room) {
   const n = room.players.length;
   let next = (room.currentPlayerIndex + room.direction + n) % n;
   let guard = 0;
-  while ((!room.players[next].connected || room.players[next].finished) && guard < n) {
+  while ((!room.players[next].connected || room.players[next].finished || room.players[next].spectator) && guard < n) {
     next = (next + room.direction + n) % n;
     guard++;
   }
   room.currentPlayerIndex = next;
+}
+
+function shuffleSeats(code, requesterId) {
+  const room = rooms.get(code);
+  if (!room) return { error: 'Room tidak ditemukan' };
+  if (room.hostId !== requesterId) return { error: 'Hanya host yang bisa mengacak' };
+  if (room.state !== 'waiting') return { error: 'Game sudah dimulai' };
+  shuffle(room.players);
+  room.players.forEach((p, i) => { p.seatIndex = i; }); // keep index==seat invariant for turn logic
+  return { room };
 }
 
 function getRoom(code) {
@@ -384,7 +416,7 @@ function getPublicState(room) {
     unoVulnerableId: room.unoVulnerableId,
     deckCount: room.deck.length,
     finishedPlayers: room.finishedPlayers || [],
-    playerCardCounts: room.players.map(p => ({
+    playerCardCounts: room.players.filter(p => !p.spectator).map(p => ({
       id: p.id, name: p.name, seatIndex: p.seatIndex,
       cardCount: p.hand.length, connected: p.connected, calledUno: p.calledUno,
     })),
@@ -407,6 +439,6 @@ function cleanupOldRooms() {
 
 module.exports = {
   createRoom, joinRoom, startGame, playCard, drawCard, passAfterDraw, timeoutDraw,
-  callUno, challengeUno, removePlayer, getRoom,
+  callUno, challengeUno, removePlayer, getRoom, shuffleSeats,
   getPublicState, getPlayerList, cleanupOldRooms,
 };

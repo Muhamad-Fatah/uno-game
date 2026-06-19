@@ -69,6 +69,7 @@ io.on('connection', (socket) => {
       yourSeatIndex: 0, isHost: true,
       gameType: room.gameType,
       unoEnabled: room.rules.uno,
+      spectatorEnabled: room.rules.hostSpectator || false,
     });
   });
 
@@ -96,6 +97,7 @@ io.on('connection', (socket) => {
       playerList, yourSeatIndex: me.seatIndex, isHost: false,
       gameType: room.gameType,
       unoEnabled: room.rules.uno,
+      spectatorEnabled: room.rules.hostSpectator || false,
     });
     socket.to(room.code).emit('room:playerJoined', { playerList });
   });
@@ -126,12 +128,21 @@ io.on('connection', (socket) => {
         pendingDrawType: room.pendingDrawType,
         gameType: room.gameType,
         unoEnabled: room.rules.uno,
-        playerList: room.players.map(p => ({
+        spectator: player.spectator,
+        playerList: room.players.filter(p => !p.spectator).map(p => ({
           id: p.id, name: p.name, seatIndex: p.seatIndex,
           cardCount: p.hand.length, connected: p.connected,
         })),
       });
     }
+  });
+
+  socket.on('room:shuffleSeats', () => {
+    const code = socket.roomCode;
+    if (!code) return;
+    const result = rm.shuffleSeats(code, socket.id);
+    if (result.error) return socket.emit('room:error', { message: result.error });
+    io.to(result.room.code).emit('room:seatsShuffled', { playerList: rm.getPlayerList(result.room) });
   });
 
   // ── Game actions ─────────────────────────────────────────
