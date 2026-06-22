@@ -73,7 +73,6 @@
           <span class="rule-desc">Host menonton tanpa ikut bermain</span>
         </div>
       </div>
-      <button id="btn-shuffle" class="btn btn-secondary btn-sm hidden">🎲 Acak Tempat Duduk</button>
       <button id="btn-start" class="btn btn-primary btn-lg" disabled>Mulai Game</button>
       <p id="room-error" class="error-msg"></p>
     </div>
@@ -145,6 +144,21 @@
 
     <!-- ── Spectator banner ── -->
     <div id="spectator-banner" class="finished-banner hidden">👁 Mode Penonton — kamu sedang menonton</div>
+
+    <!-- ── Quick chat ── -->
+    <button id="btn-chat" class="btn-chat" title="Quick chat">💬</button>
+    <div id="chat-panel" class="chat-panel hidden">
+      <div class="chat-panel-inner">
+        <h3>Quick Chat</h3>
+        <div id="chat-presets" class="chat-presets"></div>
+        <div class="chat-input-row">
+          <input id="chat-input" type="text" maxlength="100" placeholder="Tulis sendiri..." autocomplete="off">
+          <button id="chat-send" class="btn btn-primary btn-sm">Kirim</button>
+        </div>
+        <button id="chat-close" class="btn btn-ghost">Tutup</button>
+      </div>
+    </div>
+    <div id="chat-bubble-layer"></div>
 
     <!-- ── Card legend / help ── -->
     <button id="btn-help" class="btn-help" title="Keterangan kartu">?</button>

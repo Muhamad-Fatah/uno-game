@@ -137,12 +137,18 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('room:shuffleSeats', () => {
+  socket.on('game:chat', ({ message }) => {
     const code = socket.roomCode;
     if (!code) return;
-    const result = rm.shuffleSeats(code, socket.id);
-    if (result.error) return socket.emit('room:error', { message: result.error });
-    io.to(result.room.code).emit('room:seatsShuffled', { playerList: rm.getPlayerList(result.room) });
+    const room = rm.getRoom(code);
+    if (!room) return;
+    const player = room.players.find(p => p.id === socket.id);
+    if (!player) return;
+    const msg = String(message || '').trim().slice(0, 100); // length cap; escaped on client render
+    if (!msg) return;
+    io.to(code).emit('game:chat', {
+      playerId: player.id, seatIndex: player.seatIndex, name: player.name, message: msg,
+    });
   });
 
   // ── Game actions ─────────────────────────────────────────

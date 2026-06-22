@@ -81,6 +81,12 @@ function startGame(code, requesterId, rules) {
   const activeCount = room.players.filter(p => p.connected && !p.spectator).length;
   if (activeCount < 2) return { error: 'Minimal 2 pemain (selain penonton)' };
 
+  // Randomize seating every game start. Must run before currentPlayerIndex/dealing
+  // below (findIndex reads the new order). Spectator marking above is id-based, so
+  // shuffling after it is fine.
+  shuffle(room.players);
+  room.players.forEach((p, i) => { p.seatIndex = i; }); // keep index==seat invariant
+
   room.deck = shuffle(buildDeck());
   room.discardPile = [];
   room.state = 'playing';
@@ -387,16 +393,6 @@ function advanceTurn(room) {
   room.currentPlayerIndex = next;
 }
 
-function shuffleSeats(code, requesterId) {
-  const room = rooms.get(code);
-  if (!room) return { error: 'Room tidak ditemukan' };
-  if (room.hostId !== requesterId) return { error: 'Hanya host yang bisa mengacak' };
-  if (room.state !== 'waiting') return { error: 'Game sudah dimulai' };
-  shuffle(room.players);
-  room.players.forEach((p, i) => { p.seatIndex = i; }); // keep index==seat invariant for turn logic
-  return { room };
-}
-
 function getRoom(code) {
   return rooms.get(code?.toUpperCase?.() ?? code);
 }
@@ -439,6 +435,6 @@ function cleanupOldRooms() {
 
 module.exports = {
   createRoom, joinRoom, startGame, playCard, drawCard, passAfterDraw, timeoutDraw,
-  callUno, challengeUno, removePlayer, getRoom, shuffleSeats,
+  callUno, challengeUno, removePlayer, getRoom,
   getPublicState, getPlayerList, cleanupOldRooms,
 };

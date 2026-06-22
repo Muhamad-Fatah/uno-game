@@ -159,7 +159,6 @@
   font-size: .95rem;
 }
 #player-list-ul .player-icon { font-size: 1.1rem; }
-#player-list-ul .player-seat { color: var(--muted); font-weight: 700; min-width: 18px; }
 #player-list-ul .host-badge {
   margin-left: auto;
   background: rgba(88,166,255,.15);
@@ -675,18 +674,142 @@
 .color-btn[data-color=green]  { background: #2ecc71; }
 .color-btn[data-color=yellow] { background: #f1c40f; }
 
+/* Quick chat */
+.btn-chat {
+  position: fixed;
+  bottom: 20px;
+  right: 82px; /* 20 (margin) + 52 (btn-help) + 10 (gap) */
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 1.4rem;
+  cursor: pointer;
+  z-index: 90;
+  box-shadow: var(--shadow);
+  transition: transform .2s;
+}
+.btn-chat:hover { transform: scale(1.1); }
+
+.chat-panel {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 310;
+  backdrop-filter: blur(4px);
+}
+.chat-panel-inner {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 22px 24px;
+  box-shadow: var(--shadow);
+  max-width: 460px;
+  width: 92%;
+}
+.chat-panel-inner h3 { margin-bottom: 14px; font-size: 1.1rem; text-align: center; }
+.chat-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+  max-height: 46vh;
+  overflow-y: auto;
+}
+.chat-preset-btn {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  color: var(--text);
+  padding: 7px 14px;
+  font-size: .85rem;
+  cursor: pointer;
+  transition: border-color .2s, background .2s;
+}
+.chat-preset-btn:hover { border-color: var(--accent); background: rgba(88,166,255,.1); }
+.chat-input-row { display: flex; gap: 8px; margin-bottom: 12px; }
+.chat-input-row input {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 8px 12px;
+  font-size: .9rem;
+}
+.chat-panel-inner .btn-ghost { display: block; width: 100%; }
+
+#chat-bubble-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 300;
+}
+.chat-bubble {
+  position: fixed;
+  transform: translate(-50%, calc(-100% - 8px)); /* centered above the anchor's top */
+  max-width: 180px;
+  background: #fff;
+  color: #1a1a1a;
+  font-size: .82rem;
+  font-weight: 600;
+  line-height: 1.25;
+  padding: 7px 11px;
+  border-radius: 12px;
+  box-shadow: 0 6px 18px rgba(0,0,0,.5);
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+  text-align: center;
+  animation: chat-pop .25s cubic-bezier(.34,1.56,.64,1);
+}
+.chat-bubble::after { /* downward tail */
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-top: 7px solid #fff;
+}
+@keyframes chat-pop {
+  from { opacity: 0; transform: translate(-50%, calc(-100% + 4px)) scale(.8); }
+  to   { opacity: 1; transform: translate(-50%, calc(-100% - 8px)) scale(1); }
+}
+
+/* Bubble below anchor (when anchor is near top of viewport) */
+.chat-bubble--below {
+  transform: translate(-50%, 8px);
+  animation: chat-pop-below .25s cubic-bezier(.34,1.56,.64,1);
+}
+.chat-bubble--below::after { /* upward tail */
+  bottom: unset;
+  top: -6px;
+  border-top: none;
+  border-bottom: 7px solid #fff;
+}
+@keyframes chat-pop-below {
+  from { opacity: 0; transform: translate(-50%, -4px) scale(.8); }
+  to   { opacity: 1; transform: translate(-50%, 8px) scale(1); }
+}
+
 /* Card legend / help */
 .btn-help {
   position: fixed;
-  top: 8px;
-  right: 8px;
-  width: 32px;
-  height: 32px;
+  bottom: 20px;
+  right: 20px;
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text);
-  font-size: 1.05rem;
+  font-size: 1.4rem;
   font-weight: 800;
   cursor: pointer;
   z-index: 90;
@@ -993,9 +1116,16 @@
   /* Finished banner moves up */
   .finished-banner { bottom: 80px; }
 
-  /* Help panel: tighter, smaller button */
-  .btn-help { width: 28px; height: 28px; font-size: .9rem; top: 6px; right: 6px; }
+  /* Help panel: tighter panel */
+  .btn-help { width: 44px; height: 44px; font-size: 1.2rem; top: unset; bottom: 16px; right: 16px; }
   .help-panel-inner { padding: 18px 18px; }
   .help-list li { font-size: .82rem; gap: 9px; padding: 7px 0; }
   .help-sym { width: 32px; height: 32px; font-size: .95rem; }
+
+  /* Quick chat: bottom-right + tighter panel + bubbles */
+  .btn-chat { width: 44px; height: 44px; font-size: 1.2rem; top: unset; bottom: 16px; right: 68px; }
+  .chat-panel-inner { padding: 16px 16px; }
+  .chat-preset-btn { font-size: .8rem; padding: 6px 11px; }
+  .chat-presets { max-height: 40vh; }
+  .chat-bubble { max-width: 140px; font-size: .76rem; padding: 6px 9px; }
 }

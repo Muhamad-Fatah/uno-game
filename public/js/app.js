@@ -6,6 +6,26 @@
   // ── Config ────────────────────────────────────────────────
   const TURN_SECONDS = 15; // seconds per turn before auto-draw (change as needed)
 
+  // Preset quick-chat taunts (playful trash talk)
+  const QUICK_CHATS = [
+    'Kartumu jelek kayak mukamu 🤣',
+    'Nyerah aja, kamu gak ada harapan 💀',
+    'Noob detected 🤓',
+    'Mainnya lemot, ketiduran ya? 😴',
+    'Skill nol besar, hoki doang 🍀',
+    'UNO? Buat kamu mah U-NO-WIN 😭',
+    'Belajar dulu gih baru main 📚',
+    'Aku menang, kamu pulang 👋',
+    'Cupu banget sih wkwk 🐔',
+    'Mikir dong, jangan asal buang 🧠',
+    'GG 🤝',
+    'Ampun bang 🙏',
+    'Hoki doang nih 😏',
+    'Yah, apes 😩',
+    'Saya akan lawan! ⚔️',
+  ];
+  let lastChatAt = 0; // client-side cooldown timestamp
+
   // ── Global state ───────────────────────────────────────────
   let selectedGame       = 'uno'; // set by game select screen
   let turnTimerInterval  = null;
@@ -178,13 +198,6 @@
     const specToggle = document.getElementById('spectator-rule-toggle');
     if (specToggle) specToggle.checked = !!data.spectatorEnabled;
 
-    // Host-only shuffle-seats button
-    const btnShuffle = document.getElementById('btn-shuffle');
-    if (btnShuffle) {
-      btnShuffle.classList.toggle('hidden', !data.isHost);
-      btnShuffle.onclick = () => socket.emit('room:shuffleSeats');
-    }
-
     // Start button (host only)
     const btnStart = document.getElementById('btn-start');
     btnStart.style.display = data.isHost ? 'block' : 'none';
@@ -199,10 +212,9 @@
     const ul = document.getElementById('player-list-ul');
     if (!ul) return;
     ul.innerHTML = '';
-    list.forEach((p, i) => {
+    list.forEach(p => {
       const li = document.createElement('li');
       li.innerHTML = `
-        <span class="player-seat">${i + 1}.</span>
         <span class="player-icon">${p.isHost ? '👑' : '🎮'}</span>
         <span>${escHtml(p.name)}</span>
         ${p.isHost ? '<span class="host-badge">HOST</span>' : ''}
@@ -280,6 +292,8 @@
     document.getElementById('btn-help').onclick = () => helpPanel?.classList.remove('hidden');
     document.getElementById('btn-help-close').onclick = () => helpPanel?.classList.add('hidden');
     helpPanel.onclick = (e) => { if (e.target === helpPanel) helpPanel.classList.add('hidden'); };
+
+    wireChat();
 
     document.querySelectorAll('.color-btn').forEach(btn => {
       btn.addEventListener('click', () => onColorPick(btn.dataset.color));
@@ -584,6 +598,91 @@
     socket.emit('game:callUno');
   }
 
+  // ── Quick chat ─────────────────────────────────────────────
+  // Re-wired each startGame (onclick) so play-again doesn't stack listeners.
+  function wireChat() {
+    const panel   = document.getElementById('chat-panel');
+    const presets = document.getElementById('chat-presets');
+    const input   = document.getElementById('chat-input');
+    if (!panel || !presets) return;
+
+    // Build preset buttons once
+    if (!presets.childElementCount) {
+      QUICK_CHATS.forEach(text => {
+        const b = document.createElement('button');
+        b.className = 'chat-preset-btn';
+        b.textContent = text;
+        b.onclick = () => sendChat(text);
+        presets.appendChild(b);
+      });
+    }
+
+    document.getElementById('btn-chat').onclick   = () => panel.classList.remove('hidden');
+    document.getElementById('chat-close').onclick = () => panel.classList.add('hidden');
+    document.getElementById('chat-send').onclick  = () => sendChat(input.value);
+    input.onkeydown = (e) => { if (e.key === 'Enter') sendChat(input.value); };
+    panel.onclick = (e) => { if (e.target === panel) panel.classList.add('hidden'); };
+  }
+
+  function sendChat(msg) {
+    msg = String(msg || '').trim();
+    if (!msg) return;
+    const now = Date.now();
+    if (now - lastChatAt < 1200) { showToast('Tunggu sebentar...'); return; } // anti-spam
+    lastChatAt = now;
+    socket.emit('game:chat', { message: msg });
+    const input = document.getElementById('chat-input');
+    if (input) input.value = '';
+    document.getElementById('chat-panel')?.classList.add('hidden');
+  }
+
+  // Per-seat bubble timers so a new message replaces the previous one cleanly
+  const chatBubbleTimers = {};
+  function showChatBubble(seatIndex, name, message) {
+    const layer = document.getElementById('chat-bubble-layer');
+    if (!layer) return;
+
+    const anchor = seatIndex === S.mySeatIndex
+      ? document.querySelector('.my-zone')
+      : document.querySelector(`.opponent-card[data-seat="${seatIndex}"]`);
+
+    // No anchor (spectator/finished/hidden player) → fall back to a toast
+    if (!anchor || anchor.classList.contains('hidden')) {
+      showToast(`${name}: ${message}`, 3500);
+      return;
+    }
+
+    const key = `seat-${seatIndex}`;
+    layer.querySelector(`[data-bubble="${key}"]`)?.remove();
+    if (chatBubbleTimers[key]) clearTimeout(chatBubbleTimers[key]);
+
+    // rAF ensures the chat panel overlay has been removed from paint before measuring
+    requestAnimationFrame(() => {
+      const rect = anchor.getBoundingClientRect();
+      if (!rect.width && !rect.height) {
+        showToast(`${name}: ${message}`, 3500);
+        return;
+      }
+      const bubble = document.createElement('div');
+      bubble.dataset.bubble = key;
+      bubble.innerHTML = escHtml(message);
+      bubble.style.left = `${rect.left + rect.width / 2}px`;
+
+      // If anchor is too close to top edge, show bubble below instead (avoids viewport clip)
+      const showBelow = rect.top < 100;
+      if (showBelow) {
+        bubble.className = 'chat-bubble chat-bubble--below';
+        bubble.style.top = `${rect.bottom}px`;
+      } else {
+        bubble.className = 'chat-bubble';
+        bubble.style.top = `${rect.top}px`;
+      }
+      layer.appendChild(bubble);
+
+      chatBubbleTimers[key] = setTimeout(() => bubble.remove(), 4000);
+    });
+  }
+
   // ── Finished / spectator banner ────────────────────────────
   function showFinishedBanner(rank) {
     document.getElementById('finished-banner')?.remove();
@@ -640,12 +739,6 @@
 
   socket.on('room:playerJoined', ({ playerList }) => renderPlayerList(playerList));
   socket.on('room:playerLeft',   ({ playerList }) => renderPlayerList(playerList));
-  socket.on('room:seatsShuffled', ({ playerList }) => {
-    // Seats reordered — our own seatIndex may have moved, so re-derive it by id
-    const me = playerList.find(p => p.id === S.myId);
-    if (me) S.mySeatIndex = me.seatIndex;
-    renderPlayerList(playerList);
-  });
 
   socket.on('room:error', ({ message }) => {
     // Show error in whichever screen is active
@@ -712,6 +805,10 @@
   socket.on('game:error', ({ message }) => {
     showToast(message);
     Anim.shakeHand();
+  });
+
+  socket.on('game:chat', ({ seatIndex, name, message }) => {
+    showChatBubble(seatIndex, name, message);
   });
 
   // ── Init ───────────────────────────────────────────────────
